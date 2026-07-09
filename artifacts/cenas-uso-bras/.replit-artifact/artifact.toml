@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Cenas de Uso Brás"
+version = "1.0.0"
+id = "artifacts/cenas-uso-bras"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 19359
+
+[services.development]
+run = "pnpm --filter @workspace/cenas-uso-bras run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cenas-uso-bras", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/cenas-uso-bras", "run", "serve" ]
+
+[services.env]
+PORT = "19359"
+BASE_PATH = "/"

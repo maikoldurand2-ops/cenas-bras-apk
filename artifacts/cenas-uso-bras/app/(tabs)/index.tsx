@@ -30,8 +30,16 @@ function formatDate(iso: string): string {
 
 function getRua(report: Report): string {
   if (!report.data) return "-";
-  const d = report.data as Record<string, string>;
+  const d = report.data as unknown as Record<string, string>;
   return d["rua"] || "-";
+}
+
+function getMonthLabel(): string {
+  const meses = [
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+  ];
+  return meses[new Date().getMonth()];
 }
 
 export default function HomeScreen() {
@@ -42,6 +50,16 @@ export default function HomeScreen() {
 
   const topPad =
     Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+
+  const now = new Date();
+  const monthReports = reports.filter((r) => {
+    const d = new Date(r.createdAt);
+    return (
+      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    );
+  });
+  const monthDiaria = monthReports.filter((r) => r.type === "diaria").length;
+  const monthSemanal = monthReports.filter((r) => r.type === "semanal").length;
 
   const handleNew = (type: "diaria" | "semanal") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -147,6 +165,56 @@ export default function HomeScreen() {
       color: "#FFFFFF",
       textTransform: "uppercase",
       letterSpacing: 0.8,
+      textAlign: "center",
+    },
+    statsCard: {
+      marginHorizontal: 20,
+      marginBottom: 4,
+      backgroundColor: colors.muted,
+      borderRadius: colors.radius as number,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    statsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+    },
+    statsMonthLabel: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+    },
+    statsRow: {
+      flexDirection: "row",
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      gap: 10,
+    },
+    statItem: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 8,
+      borderRadius: 6,
+      backgroundColor: colors.card,
+    },
+    statNumber: {
+      fontSize: 22,
+      fontFamily: "Inter_700Bold",
+      color: colors.accent,
+    },
+    statLabel: {
+      fontSize: 10,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginTop: 2,
       textAlign: "center",
     },
     sectionHeader: {
@@ -306,6 +374,27 @@ export default function HomeScreen() {
           <Feather name="calendar" size={20} color="#FFFFFF" />
           <Text style={styles.btnLabel}>Nova Cena{"\n"}Semanal</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.statsCard}>
+        <View style={styles.statsHeader}>
+          <Feather name="bar-chart-2" size={13} color={colors.mutedForeground} />
+          <Text style={styles.statsMonthLabel}>Cenas em {getMonthLabel()}</Text>
+        </View>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{monthReports.length}</Text>
+            <Text style={styles.statLabel}>Total</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{monthDiaria}</Text>
+            <Text style={styles.statLabel}>Diárias</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{monthSemanal}</Text>
+            <Text style={styles.statLabel}>Semanais</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.sectionHeader}>

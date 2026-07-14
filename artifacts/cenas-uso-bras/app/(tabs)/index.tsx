@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -9,6 +9,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -60,6 +61,37 @@ export default function HomeScreen() {
   });
   const monthDiaria = monthReports.filter((r) => r.type === "diaria").length;
   const monthSemanal = monthReports.filter((r) => r.type === "semanal").length;
+
+  const [searchText, setSearchText] = useState("");
+  const [periodFilter, setPeriodFilter] = useState<"todos" | "semana" | "mes">(
+    "todos"
+  );
+
+  const filteredReports = useMemo(() => {
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diffToMonday = (day + 6) % 7;
+    startOfWeek.setDate(startOfWeek.getDate() - diffToMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return reports.filter((r) => {
+      if (periodFilter === "semana" && new Date(r.createdAt) < startOfWeek) {
+        return false;
+      }
+      if (periodFilter === "mes" && new Date(r.createdAt) < startOfMonth) {
+        return false;
+      }
+      if (searchText.trim()) {
+        const rua = getRua(r).toLowerCase();
+        if (!rua.includes(searchText.trim().toLowerCase())) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [reports, searchText, periodFilter, now]);
 
   const handleNew = (type: "diaria" | "semanal") => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -216,6 +248,54 @@ export default function HomeScreen() {
       letterSpacing: 0.5,
       marginTop: 2,
       textAlign: "center",
+    },
+    filterSection: {
+      paddingHorizontal: 20,
+      paddingTop: 12,
+      gap: 8,
+    },
+    searchBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.muted,
+      borderRadius: colors.radius as number,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      gap: 8,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: 10,
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+    },
+    periodRow: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    periodChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+    },
+    periodChipActive: {
+      backgroundColor: colors.accent,
+      borderColor: colors.accent,
+    },
+    periodChipText: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    periodChipTextActive: {
+      color: "#FFFFFF",
     },
     sectionHeader: {
       paddingHorizontal: 20,
@@ -397,11 +477,61 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {reports.length > 0 && (
+        <View style={styles.filterSection}>
+          <View style={styles.searchBox}>
+            <Feather name="search" size={16} color={colors.mutedForeground} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar por rua..."
+              placeholderTextColor={colors.mutedForeground}
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+            {searchText.length > 0 && (
+              <Pressable onPress={() => setSearchText("")} hitSlop={8}>
+                <Feather name="x" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
+          </View>
+          <View style={styles.periodRow}>
+            {(
+              [
+                { key: "todos", label: "Todos" },
+                { key: "semana", label: "Esta semana" },
+                { key: "mes", label: "Este mês" },
+              ] as const
+            ).map((opt) => (
+              <Pressable
+                key={opt.key}
+                style={[
+                  styles.periodChip,
+                  periodFilter === opt.key && styles.periodChipActive,
+                ]}
+                onPress={() => {
+                  Haptics.selectionAsync();
+                  setPeriodFilter(opt.key);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.periodChipText,
+                    periodFilter === opt.key && styles.periodChipTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
       <View style={styles.sectionHeader}>
         <Feather name="list" size={14} color={colors.mutedForeground} />
         <Text style={styles.sectionTitle}>
-          {reports.length > 0
-            ? `${reports.length} relatório${reports.length !== 1 ? "s" : ""} salvo${reports.length !== 1 ? "s" : ""}`
+          {filteredReports.length > 0
+            ? `${filteredReports.length} relatório${filteredReports.length !== 1 ? "s" : ""} encontrado${filteredReports.length !== 1 ? "s" : ""}`
             : "Relatórios"}
         </Text>
       </View>
@@ -420,12 +550,26 @@ export default function HomeScreen() {
             sua primeira ocorrência de campo.
           </Text>
         </View>
+      ) : filteredReports.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Feather
+            name="search"
+            size={48}
+            color={colors.mutedForeground}
+            style={styles.emptyIcon}
+          />
+          <Text style={styles.emptyTitle}>Nenhum resultado</Text>
+          <Text style={styles.emptyText}>
+            Tente ajustar a busca ou o período selecionado.
+          </Text>
+        </View>
       ) : (
         <FlatList
-          data={reports}
+          data={filteredReports}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           contentContainerStyle={{
+            paddingTop: 4,
             paddingBottom:
               insets.bottom + (Platform.OS === "web" ? 34 : 16),
           }}
